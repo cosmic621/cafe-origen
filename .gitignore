@@ -1,0 +1,26 @@
+# Dependencias
+node_modules/
+
+# Base de datos local
+*.db
+*.sqlite
+
+# Variables de entorno
+.env
+.env.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Build del frontend
+dist/
+build/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
