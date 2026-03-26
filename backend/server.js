@@ -119,6 +119,33 @@ function createTables() {
       stars INTEGER CHECK(stars BETWEEN 1 AND 5),
       created_at TEXT DEFAULT (datetime('now','localtime'))
     )`,
+    `CREATE TABLE IF NOT EXISTS kitchen_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      status TEXT DEFAULT 'pending',
+      note TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now','localtime')),
+      updated_at TEXT DEFAULT (datetime('now','localtime'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS kitchen_request_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      request_id INTEGER,
+      product_name TEXT NOT NULL,
+      quantity TEXT NOT NULL,
+      unit TEXT DEFAULT 'unidades'
+    )`,
+    `CREATE TABLE IF NOT EXISTS leave_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      employee_id INTEGER,
+      employee_name TEXT NOT NULL,
+      type TEXT NOT NULL,
+      reason TEXT NOT NULL,
+      date_from TEXT NOT NULL,
+      date_to TEXT NOT NULL,
+      status TEXT DEFAULT 'pending',
+      admin_note TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now','localtime')),
+      updated_at TEXT DEFAULT (datetime('now','localtime'))
+    )`,
   ];
   stmts.forEach(s => db.run(s));
   db._save();
@@ -682,6 +709,110 @@ router.delete("/services/:id",    authMiddleware, requireRole("superadmin"), Ser
 // ANALYTICS
 router.get("/analytics/summary", authMiddleware, requireMinRole("kitchen"), AnalyticsController.summary);
 router.get("/analytics/sales",   authMiddleware, requireMinRole("kitchen"), AnalyticsController.sales);
+
+// ── KITCHEN REQUESTS CONTROLLER ──────────────────────────────
+const KitchenRequestsController = {
+  list(req, res) {
+    const requests = all("SELECT * FROM kitchen_requests ORDER BY id DESC LIMIT 50");
+    res.json(requests.map(r => ({
+      ...r,
+      items: all("SELECT * FROM kitchen_request_items WHERE request_id=?", [r.id])
+    })));
+  },
+  create(req, res) {
+    const { items, note = "" } = req.body;
+    if (!Array.isArray(items) || items.length === 0)
+      return res.status(400).json({ error: "items requerido" });
+    run("INSERT INTO kitchen_requests (note, status) VALUES (?, 'pending')", [note]);
+    const reqId = lastId();
+    items.forEach(item =>
+      run("INSERT INTO kitchen_request_items (request_id, product_name, quantity, unit) VALUES (?,?,?,?)",
+        [reqId, item.product_name, item.quantity, item.unit || "unidades"])
+    );
+    const full = {
+      id: reqId, status: "pending", note,
+      items: all("SELECT * FROM kitchen_request_items WHERE request_id=?", [reqId]),
+      created_at: new Date().toLocaleString("es-CO"),
+    };
+    broadcast("KITCHEN_REQUEST", full);
+    res.status(201).json(full);
+  },
+  updateStatus(req, res) {
+    const { status } = req.body;
+    const valid = ["pending", "approved", "rejected", "delivered"];
+    if (!valid.includes(status)) return res.status(400).json({ error: "Estado invalido" });
+    run("UPDATE kitchen_requests SET status=?, updated_at=datetime('now','localtime') WHERE id=?", [status, req.params.id]);
+    broadcast("KITCHEN_REQUEST_STATUS", { id: Number(req.params.id), status });
+    res.json({ success: true });
+  },
+};
+
+// ── LEAVE REQUESTS CONTROLLER ─────────────────────────────────
+const LeaveController = {
+  list(req, res) {
+    res.json(all("SELECT * FROM leave_requests ORDER BY id DESC LIMIT 100"));
+  },
+  myRequests(req, res) {
+    const { employee_id } = req.query;
+    if (!employee_id) return res.status(400).json({ error: "employee_id requerido" });
+    res.json(all("SELECT * FROM leave_requests WHERE employee_id=? ORDER BY id DESC", [employee_id]));
+  },
+  create(req, res) {
+    const { employee_id, employee_name, type, reason, date_from, date_to } = req.body;
+    if (!employee_name || !type || !reason || !date_from || !date_to)
+      return res.status(400).json({ error: "Todos los campos son requeridos" });
+    run(
+      "INSERT INTO leave_requests (employee_id, employee_name, type, reason, date_from, date_to, status) VALUES (?,?,?,?,?,?,'pending')",
+      [employee_id || 0, employee_name, type, reason, date_from, date_to]
+    );
+    const newReq = get("SELECT * FROM leave_requests WHERE id=?", [lastId()]);
+    broadcast("LEAVE_REQUEST", newReq);
+    res.status(201).json(newReq);
+  },
+  updateStatus(req, res) {
+    const { status, admin_note = "" } = req.body;
+    const valid = ["pending", "approved", "rejected"];
+    if (!valid.includes(status)) return res.status(400).json({ error: "Estado invalido" });
+    run(
+      "UPDATE leave_requests SET status=?, admin_note=?, updated_at=datetime('now','localtime') WHERE id=?",
+      [status, admin_note, req.params.id]
+    );
+    broadcast("LEAVE_STATUS", { id: Number(req.params.id), status, admin_note });
+    res.json({ success: true });
+  },
+};
+
+// KITCHEN REQUESTS ROUTES
+router.get ("/kitchen-requests",             authMiddleware, requireMinRole("kitchen"), KitchenRequestsController.list);
+router.post("/kitchen-requests",             authMiddleware, requireMinRole("kitchen"), KitchenRequestsController.create);
+router.patch("/kitchen-requests/:id/status", authMiddleware, requireMinRole("admin"),   KitchenRequestsController.updateStatus);
+
+// LEAVE REQUESTS ROUTES
+router.get ("/leave-requests",               authMiddleware, requireMinRole("kitchen"), LeaveController.list);
+router.get ("/leave-requests/mine",          authMiddleware, requireMinRole("kitchen"), LeaveController.myRequests);
+router.post("/leave-requests",               authMiddleware, requireMinRole("kitchen"), LeaveController.create);
+router.patch("/leave-requests/:id/status",   authMiddleware, requireMinRole("admin"),   LeaveController.updateStatus);
+
+// EMPLOYEES endpoint documentation helper
+router.get("/employees/help", (req, res) => {
+  res.json({
+    endpoints: {
+      "GET /api/employees":              "Lista empleados activos (publico)",
+      "GET /api/employees/all":          "Lista todos los empleados (admin+)",
+      "POST /api/employees":             "Crear empleado (admin+)",
+      "PUT /api/employees/:id":          "Editar empleado (admin+)",
+      "PUT /api/employees/:id/toggle":   "Activar/desactivar (admin+)",
+      "DELETE /api/employees/:id":       "Eliminar (superadmin)",
+      "POST /api/employees/:id/rate":    "Valorar empleado (publico)",
+    },
+    example_create: {
+      method: "POST", url: "/api/employees",
+      headers: { Authorization: "Bearer <token>" },
+      body: { name: "Juan Perez", role: "Barista", since: "2024-01", notes: "Especialista en espresso" }
+    },
+    roles_validos: ["Barista","Cajero","Cocinero","Mesero","Supervisor","Limpieza"],
+  });
+});
 
 // HEALTH
 router.get("/health", (req,res) => res.json({ status:"ok", ts:Date.now(), ws_clients:clients.size, roles:["superadmin","admin","cashier","kitchen"] }));
