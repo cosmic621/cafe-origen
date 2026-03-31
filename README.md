@@ -1,10 +1,10 @@
-# ☕ Café Origen — Sistema de Gestión Integral
+#  Café Origen — Sistema de Gestión Integral
 
 Sistema completo para cafetería de especialidad construido con React + Node.js. Incluye menú digital, pedidos en tiempo real, panel multi-rol, gestión de empleados, solicitudes de insumos, dashboard de ventas y módulo de permisos/incapacidades.
 
 ---
 
-## ✨ Funcionalidades principales
+## Funcionalidades principales
 
 | Módulo | Descripción |
 |---|---|
@@ -20,7 +20,7 @@ Sistema completo para cafetería de especialidad construido con React + Node.js.
 
 ---
 
-## 🚀 Instalación rápida
+## Instalación rápida
 
 ### Requisitos
 - Node.js v18 o superior
@@ -44,7 +44,7 @@ npm run dev
 
 ---
 
-## 🌐 URLs
+##  URLs
 
 | URL | Descripción |
 |---|---|
@@ -54,7 +54,7 @@ npm run dev
 
 ---
 
-## 🔐 Credenciales
+## Credenciales
 
 | Usuario | Contraseña | Rol | Dashboard |
 |---|---|---|---|
@@ -64,7 +64,7 @@ npm run dev
 
 ---
 
-## 🏗️ Stack tecnológico
+## Stack tecnológico
 
 **Frontend**
 - React 18 + Vite
@@ -105,7 +105,7 @@ GET    /api/analytics/sales?period=day  Dashboard de ventas
 
 ---
 
-## 👥 Roles y permisos
+## Roles y permisos
 
 ```
 superadmin (100) → Todo incluyendo eliminar
@@ -116,7 +116,7 @@ kitchen    (10)  → Ver pedidos, cambiar estados, solicitar insumos
 
 ---
 
-## 📦 Datos demo incluidos
+## Datos demo incluidos
 
 Al iniciar con BD nueva se crean automáticamente:
 - **20 productos** en el menú (cafés, alimentos, especiales, no cafés)
