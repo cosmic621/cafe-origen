@@ -173,21 +173,36 @@ function seedData() {
 
   const c = name => get("SELECT id FROM categories WHERE name=?", [name]).id;
   const items = [
-    [c("Cafes"),     "Espresso Clasico",    "Origen Colombia, tueste medio oscuro.", 4500, "☕", 3, '["Cafe arabica","Agua"]'],
-    [c("Cafes"),     "Cappuccino Artesanal","Espresso doble con leche texturizada.", 7800, "🍵", 5, '["Espresso","Leche","Espuma"]'],
-    [c("Cafes"),     "Cold Brew 24h",       "Extraccion en frio por 24 horas.",       8500, "🧊", 0, '["Cafe molido","Agua fria"]'],
-    [c("Cafes"),     "Latte de Temporada",  "Sirope de canela y vainilla.",           9200, "🥛", 5, '["Espresso","Leche","Canela"]'],
-    [c("Alimentos"), "Croissant Almendra",  "Hojaldrado artesanal.",                  6500, "🥐", 2, '["Harina","Mantequilla","Almendras"]'],
-    [c("Alimentos"), "Tostada Aguacate",    "Pan masa madre con aguacate.",          12000, "🥑", 7, '["Pan","Aguacate","Tomate"]'],
-    [c("Alimentos"), "Bowl Acai",           "Base acai con granola artesanal.",      14500, "🫐", 5, '["Acai","Granola","Banano"]'],
-    [c("Especiales"),"Matcha Latte",        "Matcha ceremonial con leche avena.",    10500, "🍃", 5, '["Matcha","Leche avena"]'],
-    [c("Especiales"),"Golden Milk",         "Curcuma jengibre y leche coco.",         9800, "✨", 4, '["Curcuma","Jengibre","Coco"]'],
-    [c("No Cafes"),  "Limonada Coco",       "Limon tahiti y crema de coco.",          8000, "🍋", 3, '["Limon","Coco","Menta"]'],
+    // Cafes
+    [c("Cafes"), "Espresso Clasico",     "100% arabica de Huila, Colombia. Tueste medio-oscuro con notas de chocolate y frutos secos.", 4500,  "☕", 3, '["Cafe arabica","Agua filtrada"]',         [5,5,4,5,5,4,5,5,4]],
+    [c("Cafes"), "Cappuccino Artesanal", "Espresso doble con leche texturizada al vapor y arte latte. Cremoso y equilibrado.",           7800,  "🍵", 5, '["Espresso","Leche entera","Espuma de leche"]',[5,4,5,5,4,5,4]],
+    [c("Cafes"), "Cold Brew 24h",        "Extraccion en frio durante 24 horas. Suave, sin acidez, con notas de caramelo.",               8500,  "🧊", 0, '["Cafe molido grueso","Agua fria filtrada"]',[5,5,5,4,5,5]],
+    [c("Cafes"), "Latte de Temporada",   "Sirope artesanal de canela y vainilla de Madagascar con leche texturizada.",                   9200,  "🥛", 5, '["Espresso","Leche","Sirope canela","Vainilla"]',[4,5,4,4,5,4]],
+    [c("Cafes"), "Flat White",           "Doble ristretto con poca leche texturizada. Para quien ama el cafe intenso.",                  8000,  "☕", 4, '["Doble ristretto","Leche entera"]',          [5,5,4,5,5]],
+    [c("Cafes"), "Americano Negro",      "Espresso largo con agua caliente. Limpio, directo y sin aditivos.",                            4000,  "🖤", 2, '["Espresso","Agua caliente"]',                [4,4,5,4]],
+    // Alimentos
+    [c("Alimentos"), "Croissant Almendra",   "Hojaldrado artesanal con relleno de crema de almendras y azucar glass.",              6500,  "🥐", 2, '["Harina de fuerza","Mantequilla","Almendras","Huevo"]',  [5,4,5,5,4,5]],
+    [c("Alimentos"), "Tostada Aguacate",     "Pan de masa madre, aguacate Hass, tomate cherry, aceite de oliva y sal marina.",      12000, "🥑", 7, '["Pan masa madre","Aguacate Hass","Tomate cherry","EVOO","Flor de sal"]',[5,5,4,5,5]],
+    [c("Alimentos"), "Bowl Acai",            "Base de acai puro con granola artesanal, banano, fresas y miel de abeja.",             14500, "🫐", 5, '["Acai congelado","Granola artesanal","Banano","Fresas","Miel"]',[5,4,5,5,5,4]],
+    [c("Alimentos"), "Waffle Belga",         "Waffle crujiente con maple syrup, mantequilla y frutas del bosque frescas.",           13000, "🧇", 8, '["Harina","Huevo","Leche","Mantequilla","Maple syrup","Frutas"]',[4,5,4,5,4]],
+    [c("Alimentos"), "Sandwich Pollo",       "Pan artesanal, pechuga a la plancha, lechuga romana, tomate y mayo de albahaca.",      15000, "🥪", 10,'["Pan artesanal","Pechuga","Lechuga","Tomate","Mayo albahaca"]', [5,4,5,4,5,5]],
+    [c("Alimentos"), "Ensalada Caesar",      "Lechuga romana, crutones, parmesano, aderezo Caesar y pollo opcional.",               14000, "🥗", 8, '["Lechuga romana","Crutones","Parmesano","Aderezo Caesar"]',   [4,4,5,4]],
+    // Especiales
+    [c("Especiales"), "Matcha Latte",    "Matcha ceremonial grado A de Kyoto con leche de avena y miel organica.",               10500, "🍃", 5, '["Matcha ceremonial","Leche de avena","Miel organica"]',      [5,5,5,4,5,5,5]],
+    [c("Especiales"), "Golden Milk",     "Curcuma, jengibre fresco, leche de coco, pimienta negra y cardamomo.",                  9800,  "✨", 4, '["Curcuma","Jengibre fresco","Leche coco","Pimienta negra"]',  [4,5,4,5,4]],
+    [c("Especiales"), "Chai Latte",      "Mezcla de especias indias, te negro y leche texturizada. Especiado y reconfortante.",   9200,  "🌶️", 5, '["Te negro","Canela","Cardamomo","Clavo","Jengibre","Leche"]', [5,5,4,5,4,5]],
+    [c("Especiales"), "Dirty Matcha",    "Matcha ceremonial sobre espresso. La fusion perfecta para amantes de ambos mundos.",    11500, "💚", 5, '["Matcha","Espresso","Leche avena"]',                         [5,5,5,4,5]],
+    // No Cafes
+    [c("No Cafes"), "Limonada Coco",     "Limon tahiti fresco, crema de coco artesanal y agua con gas. Refrescante.",             8000,  "🍋", 3, '["Limon tahiti","Crema de coco","Agua con gas","Menta"]',     [5,5,4,5,5,4,5]],
+    [c("No Cafes"), "Jugo Verde",        "Espinaca, apio, manzana verde, pepino y jengibre. Energizante y natural.",              9500,  "🥬", 5, '["Espinaca","Apio","Manzana verde","Pepino","Jengibre"]',     [4,5,4,4,5]],
+    [c("No Cafes"), "Smoothie Tropical", "Mango, maracuya, banano, leche de coco y hielo. Explosion de sabor caribeno.",          10000, "🥭", 4, '["Mango","Maracuya","Banano","Leche de coco"]',              [5,5,5,4,5,5]],
+    [c("No Cafes"), "Agua de Panela",    "Panela organica colombiana con limon y hielo. Bebida tradicional de alta montana.",     5000,  "🍯", 2, '["Panela organica","Limon","Agua","Hielo"]',                  [4,4,5,4,4]],
   ];
-  items.forEach(item => {
-    db.run("INSERT INTO menu_items(category_id,name,description,price,emoji,prep_time,ingredients) VALUES(?,?,?,?,?,?,?)", item);
+  items.forEach(([cat,name,desc,price,emoji,prep,ing,stars]) => {
+    db.run("INSERT INTO menu_items(category_id,name,description,price,emoji,prep_time,ingredients) VALUES(?,?,?,?,?,?,?)",
+      [cat,name,desc,price,emoji,prep,ing]);
     const id = lastId();
-    [4,5,5,4,5,5,4,5].forEach(s => db.run("INSERT INTO ratings(menu_item_id,stars) VALUES(?,?)",[id,s]));
+    stars.forEach(s => db.run("INSERT INTO ratings(menu_item_id,stars) VALUES(?,?)",[id,s]));
   });
 
   ["📶 WiFi Gratuito|Conexion de alta velocidad",
@@ -213,6 +228,75 @@ function seedData() {
     const id = lastId();
     [4,5,5,4,5].forEach(s => db.run("INSERT INTO employee_ratings(employee_id,stars) VALUES(?,?)",[id,s]));
   });
+
+  // ── Demo historical orders for analytics ──────────────────
+  const menuIds = all("SELECT id, price, name FROM menu_items");
+  if (menuIds.length > 0) {
+    const pick = (i) => menuIds[i % menuIds.length];
+    const pastOrders = [
+      { table:2, days:0, h:9,  combos:[[0,2],[2,1]],     status:"delivered" },
+      { table:5, days:0, h:10, combos:[[1,1],[4,2]],     status:"delivered" },
+      { table:3, days:0, h:11, combos:[[7,1],[6,1]],     status:"preparing" },
+      { table:1, days:0, h:12, combos:[[0,1],[8,1],[3,1]],status:"pending"  },
+      { table:4, days:1, h:9,  combos:[[2,2],[5,1]],     status:"delivered" },
+      { table:6, days:1, h:10, combos:[[13,1],[9,2]],    status:"delivered" },
+      { table:2, days:1, h:14, combos:[[0,3],[1,1]],     status:"delivered" },
+      { table:7, days:2, h:8,  combos:[[7,2],[14,1]],    status:"delivered" },
+      { table:3, days:2, h:11, combos:[[4,1],[10,1],[3,1]],status:"delivered"},
+      { table:1, days:2, h:15, combos:[[15,1],[16,1]],   status:"delivered" },
+      { table:5, days:3, h:9,  combos:[[0,2],[8,2]],     status:"delivered" },
+      { table:8, days:3, h:13, combos:[[12,1],[6,2],[1,1]],status:"delivered"},
+      { table:2, days:4, h:10, combos:[[0,1],[2,1],[9,1]],status:"delivered" },
+      { table:4, days:4, h:11, combos:[[7,1],[13,1]],    status:"delivered" },
+      { table:6, days:5, h:9,  combos:[[3,2],[11,1]],    status:"delivered" },
+      { table:1, days:5, h:16, combos:[[0,2],[4,1],[8,1]],status:"delivered" },
+      { table:3, days:6, h:10, combos:[[15,2],[16,1],[17,1]],status:"delivered"},
+      { table:9, days:6, h:14, combos:[[5,1],[6,1],[18,1]],status:"delivered"},
+      { table:2, days:7, h:9,  combos:[[0,2],[1,1]],     status:"delivered" },
+      { table:5, days:7, h:12, combos:[[8,1],[9,1],[3,1]],status:"delivered" },
+    ];
+    pastOrders.forEach(o => {
+      const total = o.combos.reduce((s,[idx,qty]) => s + Number(pick(idx).price)*qty, 0);
+      db.run(
+        `INSERT INTO orders(table_number,total,status,created_at) VALUES(?,?,?,datetime('now','-${o.days} days','localtime'))`,
+        [o.table, total, o.status]
+      );
+      const orderId = lastId();
+      o.combos.forEach(([idx,qty]) => {
+        const m = pick(idx);
+        db.run("INSERT INTO order_items(order_id,menu_item_id,menu_item_name,quantity,unit_price) VALUES(?,?,?,?,?)",
+          [orderId, m.id, m.name, qty, m.price]);
+      });
+    });
+
+    // Demo leave requests
+    const leaveData = [
+      [1,"Valentina Rios","Incapacidad medica","Gripa con formula medica del ISS","2024-11-15","2024-11-17","approved","Aprobado. Pronta recuperacion."],
+      [4,"Andres Torres","Permiso personal","Cita medica con especialista","2024-12-02","2024-12-02","approved","Aprobado medio dia."],
+      [6,"Miguel Herrera","Vacaciones","Vacaciones anuales programadas","2024-12-20","2024-12-27","pending",""],
+      [10,"Juan Pablo Ruiz","Permiso personal","Tramite de documentos urgentes","2024-12-10","2024-12-10","rejected","No es posible ese dia por rotacion minima."],
+      [3,"Sofia Gutierrez","Calamidad domestica","Inundacion en vivienda por lluvias","2024-11-28","2024-11-29","approved","Aprobado. Esperamos que todo mejore."],
+    ];
+    leaveData.forEach(l => db.run(
+      "INSERT INTO leave_requests(employee_id,employee_name,type,reason,date_from,date_to,status,admin_note) VALUES(?,?,?,?,?,?,?,?)", l
+    ));
+
+    // Demo kitchen requests
+    db.run("INSERT INTO kitchen_requests(status,note) VALUES('delivered','Pedido semanal de insumos')");
+    const kr1 = lastId();
+    [["Cafe arabica molido","5","kg"],["Leche entera","20","litros"],["Azucar organica","3","kg"],["Harina de trigo","10","kg"]]
+      .forEach(([p,q,u]) => db.run("INSERT INTO kitchen_request_items(request_id,product_name,quantity,unit) VALUES(?,?,?,?)",[kr1,p,q,u]));
+
+    db.run("INSERT INTO kitchen_requests(status,note) VALUES('approved','Urgente para el fin de semana')");
+    const kr2 = lastId();
+    [["Aguacate Hass","30","unidades"],["Tomate cherry","5","kg"],["Pan masa madre","15","unidades"]]
+      .forEach(([p,q,u]) => db.run("INSERT INTO kitchen_request_items(request_id,product_name,quantity,unit) VALUES(?,?,?,?)",[kr2,p,q,u]));
+
+    db.run("INSERT INTO kitchen_requests(status,note) VALUES('pending','Reposicion stock bebidas')");
+    const kr3 = lastId();
+    [["Matcha ceremonial","500","g"],["Leche de avena","12","litros"],["Miel organica","3","kg"]]
+      .forEach(([p,q,u]) => db.run("INSERT INTO kitchen_request_items(request_id,product_name,quantity,unit) VALUES(?,?,?,?)",[kr3,p,q,u]));
+  }
 
   db._save();
   console.log("✅ Datos iniciales insertados.");

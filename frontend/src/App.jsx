@@ -33,6 +33,40 @@ const API    = "http://localhost:3001/api";
 const WS_URL = "ws://localhost:3001";
 const FONTS  = `@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&display=swap');`;
 
+// ─── TOAST NOTIFICATIONS ─────────────────────────────────────
+const ToastContext = createContext(null);
+function ToastProvider({ children }) {
+  const [toasts, setToasts] = useState([]);
+  function addToast(msg, type="success", duration=3500) {
+    const id = Date.now();
+    setToasts(t => [...t, { id, msg, type }]);
+    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), duration);
+  }
+  const COLORS = {
+    success: { bg:C.greenBg,  border:C.greenBorder,  text:C.green,  icon:"✓" },
+    error:   { bg:C.redBg,    border:C.redBorder,    text:C.red,    icon:"✕" },
+    info:    { bg:C.blueBg,   border:C.blueBorder,   text:C.blue,   icon:"ℹ" },
+    warning: { bg:C.yellowBg, border:C.yellowBorder, text:C.yellow, icon:"!" },
+  };
+  return (
+    <ToastContext.Provider value={addToast}>
+      {children}
+      <div style={{ position:"fixed",bottom:24,right:24,zIndex:999,display:"flex",flexDirection:"column",gap:8,maxWidth:340 }}>
+        {toasts.map(t => {
+          const s = COLORS[t.type]||COLORS.success;
+          return (
+            <div key={t.id} style={{ background:s.bg,border:`1px solid ${s.border}`,borderRadius:12,padding:"12px 16px",display:"flex",alignItems:"center",gap:10,boxShadow:`0 4px 16px ${C.espresso}18`,animation:"slideIn 0.25s ease" }}>
+              <span style={{ width:22,height:22,borderRadius:99,background:s.text,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,flexShrink:0 }}>{s.icon}</span>
+              <span style={{ fontFamily:F.sans,fontSize:13,color:C.textDark,lineHeight:1.4 }}>{t.msg}</span>
+            </div>
+          );
+        })}
+      </div>
+    </ToastContext.Provider>
+  );
+}
+function useToast() { return useContext(ToastContext) || (()=>{}); }
+
 // ─── AUTH CONTEXT ─────────────────────────────────────────────
 const AuthContext = createContext(null);
 function AuthProvider({ children }) {
@@ -157,6 +191,42 @@ function SectionTitle({ children, sub }) {
   );
 }
 
+
+// ─── CONFIRM MODAL ────────────────────────────────────────────
+function useConfirm() {
+  const [state, setState] = useState(null);
+  function confirm(msg, onYes) {
+    setState({ msg, onYes });
+  }
+  function Modal() {
+    if (!state) return null;
+    return (
+      <div onClick={()=>setState(null)} style={{ position:"fixed",inset:0,background:"rgba(28,10,4,0.55)",zIndex:500,display:"flex",alignItems:"center",justifyContent:"center",padding:20,backdropFilter:"blur(4px)" }}>
+        <div onClick={e=>e.stopPropagation()} style={{ background:C.white,borderRadius:18,padding:"1.75rem",maxWidth:360,width:"100%",textAlign:"center",animation:"slideIn 0.2s ease" }}>
+          <div style={{ fontSize:36,marginBottom:12 }}>⚠️</div>
+          <p style={{ fontFamily:F.sans,fontSize:15,color:C.textDark,margin:"0 0 20px",lineHeight:1.5 }}>{state.msg}</p>
+          <div style={{ display:"flex",gap:10,justifyContent:"center" }}>
+            <Btn onClick={()=>setState(null)} variant="secondary">Cancelar</Btn>
+            <Btn onClick={()=>{ state.onYes(); setState(null); }} variant="granate">Confirmar</Btn>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return { confirm, Modal };
+}
+
+function EmptyState({ icon, title, sub, action, onAction }) {
+  return (
+    <div style={{ textAlign:"center",padding:"4rem 2rem",display:"flex",flexDirection:"column",alignItems:"center",gap:12 }}>
+      <div style={{ fontSize:52,opacity:0.35 }}>{icon}</div>
+      <p style={{ margin:0,fontFamily:F.serif,fontWeight:700,fontSize:20,color:C.textMid }}>{title}</p>
+      {sub&&<p style={{ margin:0,fontFamily:F.sans,fontSize:13,color:C.textLight,maxWidth:300,lineHeight:1.5 }}>{sub}</p>}
+      {action&&onAction&&<Btn onClick={onAction} variant="granate" size="sm">{action}</Btn>}
+    </div>
+  );
+}
+
 function Spinner() { return <div style={{ textAlign:"center", padding:"3rem", fontFamily:F.sans, color:C.textLight, fontSize:14 }}>Cargando...</div>; }
 function ErrMsg({ msg }) {
   if (!msg) return null;
@@ -165,14 +235,35 @@ function ErrMsg({ msg }) {
 }
 
 // ─── KITCHEN ORDERS VIEW ──────────────────────────────────────
-function KitchenView({ orders, onUpdateStatus }) {
+function KitchenView({ orders, onUpdateStatus, standalone=false }) {
+  const { token } = useAuth();
+  const [localOrders, setLocalOrders] = useState(null);
+
+  // If standalone mode (no auth), load orders directly
+  useEffect(()=>{
+    if(!standalone) return;
+    async function load() {
+      try {
+        const headers = token
+          ? { "Authorization": `Bearer ${token}`, "Content-Type":"application/json" }
+          : { "Content-Type":"application/json" };
+        const res = await fetch(`${API}/orders`, { headers });
+        if(res.ok) setLocalOrders(await res.json());
+      } catch(e) { setLocalOrders([]); }
+    }
+    load();
+    const interval = setInterval(load, 5000); // poll every 5s as fallback
+    return ()=>clearInterval(interval);
+  },[standalone, token]);
+
+  const displayOrders = standalone ? (localOrders||orders) : orders;
   const STATUS = {
     pending:   { bg:"#fffbf0", border:C.dorado,     label:"Pendiente",  icon:"⏳" },
     preparing: { bg:"#f0f4ff", border:"#6aabf0",    label:"Preparando", icon:"🔥" },
     ready:     { bg:"#f0fdf6", border:C.green,       label:"Listo",      icon:"✅" },
     delivered: { bg:C.bg,      border:C.borderLight, label:"Entregado",  icon:"📦" },
   };
-  const active = orders.filter(o => o.status !== "delivered");
+  const active = displayOrders.filter(o => o.status !== "delivered");
   return (
     <div>
       <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:24 }}>
@@ -212,10 +303,10 @@ function KitchenView({ orders, onUpdateStatus }) {
           );
         })}
       </div>
-      {orders.filter(o=>o.status==="delivered").length>0 && (
+      {displayOrders.filter(o=>o.status==="delivered").length>0 && (
         <div style={{ marginTop:28 }}>
           <p style={{ fontFamily:F.sans, fontSize:11, color:C.textLight, fontWeight:600, textTransform:"uppercase", letterSpacing:"0.12em", marginBottom:10 }}>Entregados hoy</p>
-          {orders.filter(o=>o.status==="delivered").map(o => (
+          {displayOrders.filter(o=>o.status==="delivered").map(o => (
             <div key={o.id} style={{ display:"flex", justifyContent:"space-between", padding:"8px 14px", background:C.crema, borderRadius:10, fontSize:13, color:C.textLight, marginBottom:4, fontFamily:F.sans }}>
               <span>Mesa #{o.table_number} · {(o.items||[]).map(i=>`${i.quantity}× ${i.menu_item_name}`).join(", ")}</span>
               <span style={{ fontWeight:600, color:C.textMid }}>${Number(o.total).toLocaleString("es-CO")}</span>
@@ -542,7 +633,7 @@ function EmployeesPanel() {
   async function load() {
     setLoading(true);
     try { setStaff(await request("GET","/employees/all")); }
-    catch(e){ setErr(e.error||"Error"); }
+    catch(e){ setErr(e.error||"Error cargando empleados"); }
     setLoading(false);
   }
   async function save() {
@@ -844,7 +935,7 @@ function SalesDashboard({ analytics }) {
               <BarChart data={rev} period={period} />
             </ChCard>
           </div>
-          <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:14 }}>
+          <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:14 }}>
             <ChCard title="Ingresos por categoría" sub="Por monto generado">
               <HBar data={sales?.byCategory||[]} valueKey="revenue" labelKey="category" fmt={v=>{ const n=Number(v||0); return n>=1000?`$${(n/1000).toFixed(0)}k`:`$${n}`; }} />
             </ChCard>
@@ -864,6 +955,216 @@ function SalesDashboard({ analytics }) {
   );
 }
 
+
+// ─── CASHIER DASHBOARD ───────────────────────────────────────
+function CashierDashboard({ orders }) {
+  const request = useRequest();
+  const [analytics, setAnalytics] = useState(null);
+  const [allOrders, setAllOrders] = useState(orders);
+  const [loading, setLoading]     = useState(true);
+  const [err,     setErr]         = useState("");
+  const [dateFilter, setDateFilter] = useState("today");
+
+  useEffect(()=>{ load(); },[]);
+  useEffect(()=>{ setAllOrders(orders); },[orders]);
+
+  async function load() {
+    setLoading(true); setErr("");
+    try {
+      const [a, o] = await Promise.all([
+        request("GET", "/analytics/summary"),
+        request("GET", "/orders"),
+      ]);
+      setAnalytics(a); setAllOrders(o);
+    } catch(e){ setErr(e.error||"Error cargando datos"); }
+    setLoading(false);
+  }
+
+  const fmtK = v=>{ const n=Number(v||0); return n>=1000000?`$${(n/1000000).toFixed(1)}M`:n>=1000?`$${(n/1000).toFixed(0)}k`:`$${n}`; };
+
+  // Filter orders by date
+  const today = new Date().toISOString().split("T")[0];
+  const filteredOrders = allOrders.filter(o => {
+    if (dateFilter === "today") return o.created_at?.includes(today) || true; // show all if no date
+    if (dateFilter === "delivered") return o.status === "delivered";
+    if (dateFilter === "active") return ["pending","preparing","ready"].includes(o.status);
+    return true;
+  });
+
+  // Stats from orders
+  const deliveredToday = allOrders.filter(o=>o.status==="delivered");
+  const activeOrders   = allOrders.filter(o=>["pending","preparing","ready"].includes(o.status));
+  const revenue        = deliveredToday.reduce((s,o)=>s+Number(o.total||0),0);
+  const avgTicket      = deliveredToday.length ? Math.round(revenue/deliveredToday.length) : 0;
+
+  // Status breakdown
+  const statusCount = {
+    pending:   allOrders.filter(o=>o.status==="pending").length,
+    preparing: allOrders.filter(o=>o.status==="preparing").length,
+    ready:     allOrders.filter(o=>o.status==="ready").length,
+    delivered: allOrders.filter(o=>o.status==="delivered").length,
+    cancelled: allOrders.filter(o=>o.status==="cancelled").length,
+  };
+
+  // Table distribution
+  const byTable = {};
+  allOrders.forEach(o=>{
+    if(!byTable[o.table_number]) byTable[o.table_number]=0;
+    byTable[o.table_number]++;
+  });
+  const tableData = Object.entries(byTable)
+    .map(([t,c])=>({table:`Mesa ${t}`, count:c}))
+    .sort((a,b)=>b.count-a.count).slice(0,8);
+
+  const STATUS_STYLE = {
+    pending:   { label:"Pendiente",  bg:C.yellowBg,  text:C.yellow, border:C.yellowBorder },
+    preparing: { label:"Preparando", bg:C.blueBg,    text:C.blue,   border:C.blueBorder },
+    ready:     { label:"Listo",      bg:C.greenBg,   text:C.green,  border:C.greenBorder },
+    delivered: { label:"Entregado",  bg:C.crema,     text:C.textMid,border:C.border },
+    cancelled: { label:"Cancelado",  bg:C.redBg,     text:C.red,    border:C.redBorder },
+  };
+
+  return (
+    <div>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20, flexWrap:"wrap", gap:10 }}>
+        <SectionTitle sub="Resumen de ventas y estado de pedidos en tiempo real">Caja · Dashboard</SectionTitle>
+        <button onClick={load} style={{ padding:"7px 16px", borderRadius:99, border:`1px solid ${C.border}`, background:C.crema, color:C.textMid, fontFamily:F.sans, fontSize:12, cursor:"pointer" }}>↻ Actualizar</button>
+      </div>
+      <ErrMsg msg={err} />
+
+      {loading ? <Spinner /> : (
+        <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+
+          {/* KPI Cards */}
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))", gap:12 }}>
+            {[
+              { label:"Ingresos del día",   value:fmtK(revenue),          sub:`${deliveredToday.length} entregados`,  accent:C.dorado,    icon:"💰" },
+              { label:"Ticket promedio",    value:fmtK(avgTicket),         sub:"por pedido entregado",                 accent:C.granate,   icon:"🧾" },
+              { label:"Pedidos activos",    value:activeOrders.length,     sub:"pendiente + preparando + listo",       accent:C.terracota, icon:"🔥" },
+              { label:"Total del registro", value:allOrders.length,        sub:"todos los tiempos",                    accent:C.espressoMid,icon:"📋" },
+            ].map(k=>(
+              <div key={k.label} style={{ background:C.bgCard, borderRadius:14, padding:"16px 18px", border:`1px solid ${C.borderLight}`, borderTop:`3px solid ${k.accent}`, position:"relative", overflow:"hidden" }}>
+                <div style={{ position:"absolute", top:10, right:14, fontSize:20, opacity:0.1 }}>{k.icon}</div>
+                <p style={{ margin:"0 0 3px", fontFamily:F.sans, fontSize:10, color:C.textLight, fontWeight:600, textTransform:"uppercase", letterSpacing:"0.1em" }}>{k.label}</p>
+                <p style={{ margin:"0 0 4px", fontFamily:F.serif, fontSize:24, fontWeight:700, color:C.textDark, lineHeight:1 }}>{k.value}</p>
+                <span style={{ fontFamily:F.sans, fontSize:10, color:C.textLight }}>{k.sub}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Status breakdown + Table activity */}
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
+            {/* Status breakdown */}
+            <Card>
+              <p style={{ margin:"0 0 14px", fontFamily:F.sans, fontSize:13, fontWeight:600, color:C.textDark }}>Estado de pedidos</p>
+              <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                {Object.entries(statusCount).map(([status,count])=>{
+                  const s = STATUS_STYLE[status] || STATUS_STYLE.pending;
+                  const total = allOrders.length||1;
+                  return (
+                    <div key={status} style={{ display:"flex", alignItems:"center", gap:10 }}>
+                      <span style={{ fontFamily:F.sans, fontSize:12, color:s.text, background:s.bg, border:`1px solid ${s.border}`, borderRadius:99, padding:"2px 10px", minWidth:90, textAlign:"center", fontWeight:600 }}>{s.label}</span>
+                      <div style={{ flex:1, height:8, background:C.crema, borderRadius:99, overflow:"hidden" }}>
+                        <div style={{ height:"100%", width:`${Math.round((count/total)*100)}%`, background:s.text, borderRadius:99, transition:"width 0.6s ease" }}/>
+                      </div>
+                      <span style={{ fontFamily:F.serif, fontSize:16, fontWeight:700, color:C.textDark, minWidth:24, textAlign:"right" }}>{count}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+
+            {/* Table activity */}
+            <Card>
+              <p style={{ margin:"0 0 14px", fontFamily:F.sans, fontSize:13, fontWeight:600, color:C.textDark }}>Actividad por mesa</p>
+              {tableData.length===0 ? (
+                <div style={{ color:C.border, fontFamily:F.sans, fontSize:12, textAlign:"center", padding:"20px 0" }}>Sin pedidos registrados</div>
+              ) : (
+                <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                  {tableData.map((t,i)=>{
+                    const max = tableData[0].count||1;
+                    return (
+                      <div key={i} style={{ display:"flex", alignItems:"center", gap:10 }}>
+                        <span style={{ fontFamily:F.sans, fontSize:12, color:C.textMid, fontWeight:500, minWidth:60 }}>{t.table}</span>
+                        <div style={{ flex:1, height:8, background:C.crema, borderRadius:99, overflow:"hidden" }}>
+                          <div style={{ height:"100%", width:`${(t.count/max)*100}%`, background:C.dorado, borderRadius:99, transition:"width 0.6s ease" }}/>
+                        </div>
+                        <span style={{ fontFamily:F.serif, fontSize:15, fontWeight:700, color:C.granate, minWidth:20, textAlign:"right" }}>{t.count}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </Card>
+          </div>
+
+          {/* Live orders list */}
+          <Card>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
+              <p style={{ margin:0, fontFamily:F.sans, fontSize:13, fontWeight:600, color:C.textDark }}>Lista de pedidos</p>
+              <div style={{ display:"flex", gap:4, background:C.crema, borderRadius:10, padding:3 }}>
+                {[["all","Todos"],["active","Activos"],["delivered","Entregados"]].map(([v,l])=>(
+                  <button key={v} onClick={()=>setDateFilter(v)} style={{ padding:"5px 14px", borderRadius:8, border:"none", background:dateFilter===v?C.espresso:"transparent", color:dateFilter===v?C.crema:C.textMid, fontFamily:F.sans, fontSize:11, fontWeight:dateFilter===v?600:400, cursor:"pointer", transition:"all 0.2s" }}>{l}</button>
+                ))}
+              </div>
+            </div>
+            <div style={{ display:"flex", flexDirection:"column", gap:6, maxHeight:400, overflowY:"auto" }}>
+              {filteredOrders.length===0 && <div style={{ color:C.border, fontFamily:F.sans, fontSize:12, textAlign:"center", padding:"20px 0" }}>Sin pedidos en esta vista</div>}
+              {filteredOrders.slice(0,50).map(order=>{
+                const s = STATUS_STYLE[order.status]||STATUS_STYLE.pending;
+                return (
+                  <div key={order.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 14px", background:C.bg, borderRadius:10, border:`1px solid ${C.borderLight}` }}>
+                    <div style={{ width:34, height:34, borderRadius:10, background:C.crema, border:`2px solid ${C.border}`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                      <span style={{ fontFamily:F.serif, fontWeight:700, fontSize:14, color:C.textMid }}>{order.table_number}</span>
+                    </div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:2 }}>
+                        <span style={{ fontFamily:F.sans, fontSize:13, fontWeight:600, color:C.textDark }}>Mesa #{order.table_number}</span>
+                        <span style={{ fontFamily:F.sans, fontSize:10, color:C.textLight }}>#{order.id}</span>
+                      </div>
+                      <p style={{ margin:0, fontFamily:F.sans, fontSize:11, color:C.textLight }}>
+                        {(order.items||[]).slice(0,3).map(i=>`${i.quantity}× ${i.menu_item_name}`).join(", ")}
+                        {(order.items||[]).length>3?` +${(order.items||[]).length-3} más`:""}
+                      </p>
+                    </div>
+                    <span style={{ fontFamily:F.serif, fontSize:16, fontWeight:700, color:C.granate, whiteSpace:"nowrap" }}>${Number(order.total||0).toLocaleString("es-CO")}</span>
+                    <span style={{ padding:"3px 10px", borderRadius:99, background:s.bg, color:s.text, border:`1px solid ${s.border}`, fontFamily:F.sans, fontSize:11, fontWeight:600, whiteSpace:"nowrap" }}>{s.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+            {filteredOrders.length>50&&<p style={{ fontFamily:F.sans, fontSize:11, color:C.textLight, textAlign:"center", margin:"10px 0 0" }}>Mostrando 50 de {filteredOrders.length} pedidos</p>}
+          </Card>
+
+          {/* Top products from analytics */}
+          {analytics?.top_items?.length>0&&(
+            <Card>
+              <p style={{ margin:"0 0 14px", fontFamily:F.sans, fontSize:13, fontWeight:600, color:C.textDark }}>Productos mejor valorados</p>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))", gap:8 }}>
+                {analytics.top_items.slice(0,6).map((item,i)=>(
+                  <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 12px", background:C.bg, borderRadius:10 }}>
+                    <div style={{ width:24, height:24, borderRadius:99, background:i<3?C.doradoLight:C.crema, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                      <span style={{ fontFamily:F.sans, fontWeight:700, fontSize:10, color:i<3?C.doradoDark:C.textLight }}>{i+1}</span>
+                    </div>
+                    <span style={{ fontSize:16 }}>{item.emoji}</span>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <p style={{ margin:0, fontFamily:F.sans, fontSize:12, fontWeight:600, color:C.textDark, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{item.name}</p>
+                      <div style={{ display:"flex", alignItems:"center", gap:4 }}>
+                        <Stars value={item.avg_rating||0} size={11}/>
+                        <span style={{ fontFamily:F.sans, fontSize:10, color:C.textLight }}>{Number(item.avg_rating||0).toFixed(1)}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── ADMIN DASHBOARD ──────────────────────────────────────────
 function AdminDashboard({ orders, onUpdateStatus }) {
   const request  = useRequest();
@@ -871,7 +1172,8 @@ function AdminDashboard({ orders, onUpdateStatus }) {
   const canEdit    = ["superadmin","admin"].includes(role);
   const isSuperAdmin = role==="superadmin";
 
-  const [tab,       setTab]      = useState("analytics");
+  const { role: currentRole } = useAuth();
+  const [tab,       setTab]      = useState(currentRole==="cashier"?"caja":"analytics");
   const [menu,      setMenu]     = useState([]);
   const [services,  setServices] = useState([]);
   const [analytics, setAnalytics]= useState(null);
@@ -919,6 +1221,7 @@ function AdminDashboard({ orders, onUpdateStatus }) {
 
   const tabs = [
     {id:"analytics",label:"Analytics",  icon:"📊"},
+    {id:"caja",     label:"Caja",        icon:"🧾"},
     {id:"menu",     label:"Menú",        icon:"🍽️"},
     {id:"services", label:"Servicios",   icon:"⚙️"},
     {id:"employees",label:"Empleados",   icon:"👥"},
@@ -946,9 +1249,10 @@ function AdminDashboard({ orders, onUpdateStatus }) {
       </div>
 
       {tab==="analytics"  && <SalesDashboard analytics={analytics} />}
+      {tab==="caja"      && <CashierDashboard orders={orders} />}
       {tab==="employees"  && <EmployeesPanel />}
       {tab==="leaves"     && <LeavePanel employeesList={empList} />}
-      {tab==="kitchen"    && <KitchenView orders={orders} onUpdateStatus={onUpdateStatus} />}
+      {tab==="kitchen"    && <KitchenView orders={orders} onUpdateStatus={onUpdateStatus} standalone={true} />}
       {tab==="supply"     && <KitchenSupplyPanel />}
 
       {tab==="menu" && (
@@ -960,7 +1264,7 @@ function AdminDashboard({ orders, onUpdateStatus }) {
           {editing&&canEdit&&(
             <Card style={{ marginBottom:18,border:`2px solid ${C.dorado}` }}>
               <p style={{ margin:"0 0 16px",fontFamily:F.serif,fontWeight:700,fontSize:18,color:C.textDark }}>{editing==="new"?"Nuevo producto":"Editar producto"}</p>
-              <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12 }}>
+              <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:12 }}>
                 {[["name","Nombre"],["emoji","Emoji"],["description","Descripción"],["price","Precio (COP)"],["prep_time","Tiempo (min)"]].map(([k,l])=>(
                   <div key={k} style={{ gridColumn:k==="description"?"1/-1":"auto" }}>
                     <label style={{ fontFamily:F.sans,fontSize:11,color:C.textLight,fontWeight:600,display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:"0.06em" }}>{l}</label>
@@ -1017,7 +1321,7 @@ function AdminDashboard({ orders, onUpdateStatus }) {
           </div>
           {editSvc&&canEdit&&(
             <Card style={{ marginBottom:16,border:`2px solid ${C.dorado}` }}>
-              <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
+              <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:10 }}>
                 {[["icon","Icono"],["title","Título"],["description","Descripción"]].map(([k,l])=>(
                   <div key={k} style={{ gridColumn:k==="description"?"1/-1":"auto" }}>
                     <label style={{ fontFamily:F.sans,fontSize:11,color:C.textLight,fontWeight:600,display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:"0.06em" }}>{l}</label>
@@ -1083,7 +1387,14 @@ function CustomerView({ onPlaceOrder }) {
   const [services, setServices] = useState([]);
   const [staff,    setStaff]    = useState([]);
   const [cat,      setCat]      = useState("Todos");
-  const [cart,     setCart]     = useState([]);
+  const [cart,     setCart]     = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem("cafe_cart")||"[]"); } catch{ return []; }
+  });
+
+  // Persist cart to sessionStorage on change
+  useEffect(()=>{
+    try { sessionStorage.setItem("cafe_cart", JSON.stringify(cart)); } catch{}
+  },[cart]);
   const [tableNum, setTableNum] = useState("");
   const [view,     setView]     = useState("menu");
   const [detail,   setDetail]   = useState(null);
@@ -1095,6 +1406,7 @@ function CustomerView({ onPlaceOrder }) {
   const [sRModal,  setSRModal]  = useState(null);
   const [sRDone,   setSRDone]   = useState({});
   const [sRHov,    setSRHov]    = useState(0);
+  const [submitError, setSubmitError] = useState("");
 
   useEffect(()=>{
     Promise.all([
@@ -1115,9 +1427,19 @@ function CustomerView({ onPlaceOrder }) {
 
   async function submitOrder() {
     if(!tableNum) return;
-    const items=cart.map(c=>({ id:c.id,name:menu.find(m=>m.id===c.id)?.name,qty:c.qty,note:notes[c.id]||"",price:menu.find(m=>m.id===c.id)?.price||0 }));
-    await onPlaceOrder({ table_number:tableNum, items });
-    setOrdered(true); setCart([]);
+    try {
+      const items=cart.map(c=>({
+        id:c.id,
+        name:menu.find(m=>m.id===c.id)?.name||"Producto",
+        qty:c.qty,
+        note:notes[c.id]||"",
+        price:menu.find(m=>m.id===c.id)?.price||0
+      }));
+      await onPlaceOrder({ table_number:Number(tableNum), items });
+      setOrdered(true); setCart([]); try{sessionStorage.removeItem("cafe_cart");}catch{}
+    } catch(e) {
+      setSubmitError(e.error || e.errors?.join(", ") || "Error enviando el pedido. Verifica tu conexión.");
+    }
   }
 
   async function rateItem(id,stars) {
@@ -1295,7 +1617,7 @@ function CustomerView({ onPlaceOrder }) {
               <Btn onClick={()=>setView("menu")} variant="secondary">Ver menú</Btn>
             </div>
           ) : (
-            <div style={{ display:"grid",gridTemplateColumns:"1fr 300px",gap:20,alignItems:"start" }}>
+            <div style={{ display:"grid",gridTemplateColumns:"min(300px,100%) 1fr",gap:20,alignItems:"start",direction:"rtl" }}>
               <div>
                 <p style={{ fontFamily:F.serif,fontWeight:700,fontSize:22,color:C.textDark,margin:"0 0 16px" }}>Tu pedido</p>
                 {cart.map(c=>{ const item=menu.find(m=>m.id===c.id); if(!item) return null; return (
@@ -1339,6 +1661,7 @@ function CustomerView({ onPlaceOrder }) {
                     <input type="number" value={tableNum} onChange={e=>setTableNum(e.target.value)} placeholder="Ej: 5"
                       style={{ width:"100%",padding:"10px 14px",borderRadius:10,border:`1.5px solid ${!tableNum?C.red:C.border}`,fontSize:15,boxSizing:"border-box",fontFamily:F.sans,color:C.textDark,background:C.white }} />
                   </div>
+                  {submitError && <div style={{ background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:10,padding:"10px 14px",fontFamily:F.sans,fontSize:12,color:C.red,marginBottom:10 }}>{submitError}</div>}
                   <Btn onClick={submitOrder} disabled={!tableNum} variant="granate" full>Enviar a cocina 🚀</Btn>
                 </Card>
               </div>
@@ -1403,8 +1726,15 @@ function AppContent() {
   },[]);
 
   useEffect(()=>{
-    if((appView==="admin"||appView==="kitchen")&&token)
+    if(appView==="admin"&&token) {
       request("GET","/orders").then(setOrders).catch(console.error);
+    } else if(appView==="kitchen") {
+      const headers = { "Content-Type":"application/json", ...(token?{Authorization:`Bearer ${token}`}:{}) };
+      fetch(`${API}/orders`, { headers })
+        .then(r=>r.ok?r.json():[])
+        .then(data=>{ if(Array.isArray(data)) setOrders(data); })
+        .catch(()=>setOrders([]));
+    }
   },[appView,token]);
 
   async function handleLogin() {
@@ -1421,9 +1751,18 @@ function AppContent() {
   }
 
   async function handlePlaceOrder(orderData) {
-    const res = await fetch(`${API}/orders`,{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(orderData) });
-    if(!res.ok) throw await res.json();
-    return res.json();
+    const res = await fetch(`${API}/orders`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(orderData)
+    });
+    if(!res.ok) {
+      const err = await res.json();
+      throw err;
+    }
+    const newOrder = await res.json();
+    setOrders(prev => [newOrder, ...prev]);
+    return newOrder;
   }
 
   async function updateOrderStatus(orderId, newStatus) {
@@ -1580,5 +1919,5 @@ function AppContent() {
 }
 
 export default function App() {
-  return <AuthProvider><AppContent /></AuthProvider>;
+  return <ToastProvider><AuthProvider><AppContent /></AuthProvider></ToastProvider>;
 }
