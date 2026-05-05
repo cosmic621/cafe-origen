@@ -1,26 +1,30 @@
+cat > .gitignore << 'EOF'
+# Base de datos (se genera automáticamente)
+cafe.db
+
 # Dependencias
 node_modules/
-
-# Base de datos local
-*.db
-*.sqlite
+frontend/node_modules/
 
 # Variables de entorno
 .env
 .env.local
+.env.production
 
-# Logs
-*.log
-npm-debug.log*
-
-# Build del frontend
+# Builds
+frontend/dist/
+frontend/build/
 dist/
-build/
 
 # Sistema operativo
 .DS_Store
 Thumbs.db
 
-# Editor
+# Logs
+*.log
+npm-debug.log*
+
+# IDE
 .vscode/
 .idea/
+EOF
