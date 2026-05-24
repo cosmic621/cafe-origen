@@ -17,8 +17,8 @@ const C = {
   sBlue:"#1d4ed8", blueBg:"#eff6ff", blueBorder:"#bfdbfe",
 };
 const F = { serif:"'Cormorant Garamond',serif", sans:"'Syne',sans-serif", mono:"monospace" };
-const API = "http://localhost:3001/api";
-const WS_URL = "ws://localhost:3001";
+const API = "https://cafe-origen-production.up.railway.app/api";
+const WS_URL = "wss://cafe-origen-production.up.railway.app";
 const AV_COLORS = [C.granate, C.doradoDark, C.sGreen, "#9333ea", C.terracota, "#0891b2"];
 const KITCHEN_UNITS = ["kg","g","lb","oz","litros","ml","unidades","cajas","paquetes","docenas"];
 const LEAVE_TYPES = ["Incapacidad médica","Permiso personal","Vacaciones","Calamidad doméstica","Permiso de maternidad/paternidad","Otro"];
