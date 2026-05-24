@@ -298,7 +298,29 @@ body{font-family:'Syne',sans-serif;background:#F7F2EA;color:#0D0A06;overflow-x:h
   .stats-bar,.featured-strip{grid-template-columns:repeat(2,1fr)}
   .drawer{width:100%}
   .section{padding:4rem 1.5rem}
-  .ara-nav{padding:0 1.5rem}
+  .ara-nav{padding:0 1.5rem;gap:8px}
+  .nav-cart{padding:8px 14px;font-size:.65rem}
+  .auth-btn{padding:6px 10px;font-size:.6rem}
+
+  /* Hero centrado y con padding */
+  .hero-left{padding:4rem 1.5rem 3rem;text-align:center;align-items:center}
+  .hero-eyebrow{justify-content:center}
+  .hero-headline{font-size:clamp(2.8rem,10vw,4rem);text-align:center}
+  .hero-sub{text-align:center;font-size:.85rem}
+  .hero-actions{flex-direction:column;width:100%;gap:.8rem}
+  .btn-dark,.btn-ghost{width:100%;text-align:center;padding:14px 24px}
+
+  /* Stats */
+  .stats-bar{grid-template-columns:repeat(2,1fr)}
+  .stat-item{padding:1.5rem 1rem}
+  .stat-val{font-size:2rem}
+
+  /* Featured */
+  .featured-strip{grid-template-columns:1fr}
+  .feat-card{padding:1.8rem}
+
+  /* Nav botones más compactos */
+  .nav-logo{font-size:1.3rem;letter-spacing:2px}
 }
 `;
 
