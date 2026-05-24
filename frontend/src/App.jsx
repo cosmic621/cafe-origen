@@ -927,30 +927,111 @@ function LoginPage({onLogin}){
 }
 
 // ── KITCHEN VIEW ──────────────────────────────────────────────
+// ── KITCHEN VIEW ──────────────────────────────────────────────
 function KitchenView({orders,onUpdateStatus}){
   const STATUS={
     pending:  {bg:"#fffbf0",border:C.dorado,  label:"Pendiente", icon:"⏳"},
     preparing:{bg:"#f0f4ff",border:C.sBlue,   label:"Preparando",icon:"🔥"},
     ready:    {bg:"#f0fdf6",border:C.sGreen,  label:"Listo",     icon:"✅"},
     delivered:{bg:C.bg,     border:C.borderLight,label:"Entregado",icon:"📦"},
+    cancelled:{bg:C.redBg,  border:C.redBorder,  label:"Cancelado", icon:"❌"},
   };
   const active=orders.filter(o=>o.status!=="delivered"&&o.status!=="cancelled");
+  const delivered=orders.filter(o=>o.status==="delivered");
+
   const getItemName=item=>item.menu_item_name||item.name||"Producto";
   const getItemQty =item=>item.quantity||item.qty||1;
   const getItemNote=item=>item.special_note||item.note||"";
 
+  // ── Modal de detalle ──
+  const [selected, setSelected] = useState(null);
+
+  function OrderDetailModal({order, onClose}){
+    if(!order) return null;
+    const s = STATUS[order.status]||STATUS.pending;
+    const total = Number(order.total||0);
+    return(
+      <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(13,10,6,.7)",zIndex:900,display:"flex",alignItems:"center",justifyContent:"center",padding:20,backdropFilter:"blur(6px)"}}>
+        <div onClick={e=>e.stopPropagation()} style={{background:"#FFFCF5",maxWidth:500,width:"100%",maxHeight:"85vh",overflowY:"auto",display:"flex",flexDirection:"column"}}>
+
+          {/* Header */}
+          <div style={{background:C.espresso,padding:"1.5rem 2rem",display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
+            <div>
+              <p style={{fontFamily:F.serif,fontSize:"1.8rem",color:C.gold2,fontWeight:300,marginBottom:2}}>Mesa #{order.table_number||"—"}</p>
+              <p style={{fontFamily:F.sans,fontSize:".65rem",letterSpacing:"2px",textTransform:"uppercase",color:"rgba(232,201,122,.5)"}}>Pedido #{order.id} · {order.created_at||""}</p>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8}}>
+              <span style={{fontFamily:F.sans,fontSize:".65rem",fontWeight:700,letterSpacing:"1px",textTransform:"uppercase",background:`${s.border}22`,color:s.border,border:`1px solid ${s.border}`,padding:"4px 12px"}}>{s.icon} {s.label}</span>
+              <button onClick={onClose} style={{background:"none",border:"1px solid rgba(255,255,255,.15)",color:"rgba(255,255,255,.5)",width:28,height:28,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:".9rem"}}>✕</button>
+            </div>
+          </div>
+
+          {/* Items */}
+          <div style={{padding:"1.5rem 2rem",flex:1}}>
+            <p style={{fontFamily:F.sans,fontSize:".62rem",letterSpacing:"3px",textTransform:"uppercase",color:C.textLight,marginBottom:12}}>Productos</p>
+            <div style={{display:"flex",flexDirection:"column",gap:1,background:C.borderLight,marginBottom:20}}>
+              {(order.items||[]).map((item,i)=>(
+                <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",background:"#FFFCF5",gap:12}}>
+                  <div style={{flex:1}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{fontFamily:F.sans,fontSize:".72rem",fontWeight:700,color:C.espresso,background:C.cream,padding:"2px 8px",minWidth:28,textAlign:"center"}}>{getItemQty(item)}×</span>
+                      <span style={{fontFamily:F.sans,fontSize:".88rem",fontWeight:600,color:C.textDark}}>{getItemName(item)}</span>
+                    </div>
+                    {getItemNote(item)&&(
+                      <p style={{fontFamily:F.sans,fontSize:".72rem",color:C.textLight,fontStyle:"italic",marginTop:4,marginLeft:36}}>"{getItemNote(item)}"</p>
+                    )}
+                  </div>
+                  <span style={{fontFamily:F.serif,fontSize:"1rem",color:C.granate,flexShrink:0}}>${Number((item.unit_price||item.price||0)*(getItemQty(item))).toLocaleString()}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Nota del pedido */}
+            {order.note&&(
+              <div style={{background:C.yellowBg,border:`1px solid ${C.yellowBorder}`,padding:"12px 16px",marginBottom:20}}>
+                <p style={{fontFamily:F.sans,fontSize:".62rem",letterSpacing:"2px",textTransform:"uppercase",color:C.sYellow,marginBottom:4}}>Nota del cliente</p>
+                <p style={{fontFamily:F.sans,fontSize:".85rem",color:C.textMid,fontStyle:"italic"}}>"{order.note}"</p>
+              </div>
+            )}
+
+            {/* Total */}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",borderTop:`2px solid ${C.borderLight}`,paddingTop:16}}>
+              <span style={{fontFamily:F.sans,fontSize:".72rem",letterSpacing:"2px",textTransform:"uppercase",color:C.textLight}}>Total del pedido</span>
+              <span style={{fontFamily:F.serif,fontSize:"1.8rem",fontWeight:300,color:C.granate}}>${total.toLocaleString()}</span>
+            </div>
+          </div>
+
+          {/* Acciones */}
+          {order.status!=="delivered"&&order.status!=="cancelled"&&(
+            <div style={{padding:"1rem 2rem",borderTop:`1px solid ${C.borderLight}`,display:"flex",gap:8,flexShrink:0}}>
+              {order.status==="pending"   &&<ABtn v="gold"    full onClick={()=>{onUpdateStatus(order.id,"preparing");onClose();}}>🔥 Iniciar preparación</ABtn>}
+              {order.status==="preparing" &&<ABtn v="dark"    full onClick={()=>{onUpdateStatus(order.id,"ready");onClose();}}>✅ Marcar listo</ABtn>}
+              {order.status==="ready"     &&<ABtn v="outline" full onClick={()=>{onUpdateStatus(order.id,"delivered");onClose();}}>📦 Entregar</ABtn>}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return(
     <div>
+      {/* Modal */}
+      {selected && <OrderDetailModal order={selected} onClose={()=>setSelected(null)}/>}
+
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:24}}>
         <span style={{width:8,height:8,borderRadius:"50%",background:C.sGreen,display:"inline-block"}}/>
         <span style={{fontFamily:F.sans,fontSize:".68rem",letterSpacing:"2px",textTransform:"uppercase",color:C.textLight}}>EN VIVO · {active.length} pedidos activos</span>
       </div>
+
       {active.length===0&&<div style={{textAlign:"center",padding:"4rem",color:C.borderLight}}><div style={{fontSize:48,marginBottom:8,opacity:.5}}>🍽️</div><p style={{fontFamily:F.sans,fontSize:".72rem",letterSpacing:"1px",textTransform:"uppercase"}}>Sin pedidos pendientes</p></div>}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(290px,1fr))",gap:14}}>
+
+      {/* Tarjetas de pedidos activos */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(290px,1fr))",gap:14,marginBottom:32}}>
         {active.map(order=>{
           const s=STATUS[order.status]||STATUS.pending;
           return(
-            <div key={order.id} style={{background:s.bg,padding:18,border:`2px solid ${s.border}`,transition:"all .3s"}}>
+            <div key={order.id} style={{background:s.bg,padding:18,border:`2px solid ${s.border}`,transition:"all .3s",cursor:"pointer"}} onClick={()=>setSelected(order)}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
                 <div>
                   <span style={{fontFamily:F.serif,fontWeight:700,fontSize:"1.3rem",color:C.textDark}}>Mesa #{order.table_number||"—"}</span>
@@ -967,24 +1048,46 @@ function KitchenView({orders,onUpdateStatus}){
                 ))}
               </div>
               {order.note&&<p style={{fontFamily:F.sans,fontSize:".72rem",color:C.textMid,fontStyle:"italic",marginBottom:10,paddingLeft:8,borderLeft:`2px solid ${s.border}`}}>{order.note}</p>}
-              <div style={{display:"flex",gap:8}}>
-                {order.status==="pending"   &&<ABtn v="gold"    full onClick={()=>onUpdateStatus(order.id,"preparing")}>🔥 Iniciar preparación</ABtn>}
-                {order.status==="preparing" &&<ABtn v="dark"    full onClick={()=>onUpdateStatus(order.id,"ready")}>✅ Marcar listo</ABtn>}
-                {order.status==="ready"     &&<ABtn v="outline" full onClick={()=>onUpdateStatus(order.id,"delivered")}>📦 Entregar</ABtn>}
+              <div style={{display:"flex",gap:8,justifyContent:"space-between",alignItems:"center"}}>
+                <span style={{fontFamily:F.sans,fontSize:".65rem",color:C.textLight,letterSpacing:"1px"}}>👆 Ver detalle</span>
+                <div style={{display:"flex",gap:8}} onClick={e=>e.stopPropagation()}>
+                  {order.status==="pending"   &&<ABtn v="gold"    onClick={()=>onUpdateStatus(order.id,"preparing")}>🔥 Preparar</ABtn>}
+                  {order.status==="preparing" &&<ABtn v="dark"    onClick={()=>onUpdateStatus(order.id,"ready")}>✅ Listo</ABtn>}
+                  {order.status==="ready"     &&<ABtn v="outline" onClick={()=>onUpdateStatus(order.id,"delivered")}>📦 Entregar</ABtn>}
+                </div>
               </div>
             </div>
           );
         })}
       </div>
-      {orders.filter(o=>o.status==="delivered").length>0&&(
-        <div style={{marginTop:28}}>
-          <p style={{fontFamily:F.sans,fontSize:".62rem",letterSpacing:"2px",textTransform:"uppercase",color:C.textLight,marginBottom:10}}>Entregados hoy</p>
-          {orders.filter(o=>o.status==="delivered").map(o=>(
-            <div key={o.id} style={{display:"flex",justifyContent:"space-between",padding:"8px 14px",background:C.cream,fontSize:".78rem",color:C.textLight,marginBottom:4,fontFamily:F.sans}}>
-              <span>Mesa #{o.table_number||"—"} · {(o.items||[]).map(i=>`${getItemQty(i)}× ${getItemName(i)}`).join(", ")}</span>
-              <span style={{fontWeight:700,color:C.textMid}}>${Number(o.total||0).toLocaleString()}</span>
-            </div>
-          ))}
+
+      {/* Lista de entregados */}
+      {delivered.length>0&&(
+        <div>
+          <p style={{fontFamily:F.sans,fontSize:".62rem",letterSpacing:"2px",textTransform:"uppercase",color:C.textLight,marginBottom:10}}>Entregados hoy ({delivered.length})</p>
+          <div style={{display:"flex",flexDirection:"column",gap:1,background:C.borderLight}}>
+            {delivered.map(o=>(
+              <div key={o.id} onClick={()=>setSelected(o)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",background:C.cream,cursor:"pointer",transition:"background .2s"}}
+                onMouseEnter={e=>e.currentTarget.style.background="#EAD9C0"}
+                onMouseLeave={e=>e.currentTarget.style.background=C.cream}
+              >
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:2}}>
+                    <span style={{fontFamily:F.serif,fontSize:"1rem",fontWeight:700,color:C.textDark}}>Mesa #{o.table_number||"—"}</span>
+                    <span style={{fontFamily:F.sans,fontSize:".65rem",color:C.textLight}}>#{o.id}</span>
+                    <span style={{fontFamily:F.sans,fontSize:".65rem",color:C.textLight}}>{o.created_at||""}</span>
+                  </div>
+                  <p style={{fontFamily:F.sans,fontSize:".75rem",color:C.textLight,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                    {(o.items||[]).map(i=>`${getItemQty(i)}× ${getItemName(i)}`).join(", ")}
+                  </p>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:12,flexShrink:0}}>
+                  <span style={{fontFamily:F.serif,fontSize:"1.1rem",fontWeight:300,color:C.granate}}>${Number(o.total||0).toLocaleString()}</span>
+                  <span style={{fontFamily:F.sans,fontSize:".65rem",color:C.textLight,letterSpacing:"1px"}}>ver →</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
