@@ -291,11 +291,11 @@ body{font-family:'Syne',sans-serif;background:#F7F2EA;color:#0D0A06;overflow-x:h
 .login-box{background:#FFFCF5;border:1px solid #EAD9C0;padding:3rem;width:100%;max-width:440px;margin:auto}
 
 @media(max-width:780px){
-  .hero{grid-template-columns:1fr;height:auto;padding-bottom:3rem}
+  .hero{grid-template-columns:1fr;height:auto;min-height:60vh;padding-bottom:2rem}
   .hero-right,.nav-links{display:none}
   .menu-layout,.order-grid,.contact-grid,.exp-grid{grid-template-columns:1fr}
   .menu-sidebar{position:static}
-  .stats-bar,.featured-strip{grid-template-columns:repeat(2,1fr)}
+  .stats-bar,.featured-strip{grid-template-columns:1fr;gap:0}
   .drawer{width:100%}
   .section{padding:4rem 1.5rem}
   .ara-nav{padding:0 1.5rem;gap:8px}
@@ -321,6 +321,10 @@ body{font-family:'Syne',sans-serif;background:#F7F2EA;color:#0D0A06;overflow-x:h
 
   /* Nav botones más compactos */
   .nav-logo{font-size:1.3rem;letter-spacing:2px}
+
+  .feat-card{padding:1.5rem;border:1px solid rgba(0,0,0,.08)}
+  .feat-card-num{font-size:3rem}
+  .section{padding:3rem 1.5rem}
 }
 `;
 
