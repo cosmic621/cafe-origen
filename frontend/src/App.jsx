@@ -254,8 +254,6 @@ body{font-family:'Syne',sans-serif;background:#F7F2EA;color:#0D0A06;overflow-x:h
 .barista-note label{font-size:.6rem;letter-spacing:2px;text-transform:uppercase;color:rgba(232,201,122,.5);display:block;margin-bottom:8px}
 .barista-note textarea{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(232,201,122,.15);color:#E8C97A;font-family:'Syne',sans-serif;font-size:.82rem;padding:10px;resize:none;min-height:60px;outline:none}
 .barista-note textarea::placeholder{color:rgba(232,201,122,.2)}
-
-/* FIX: input de mesa */
 .table-input-wrap{margin-top:1rem}
 .table-input-wrap label{font-size:.6rem;letter-spacing:2px;text-transform:uppercase;color:rgba(232,201,122,.5);display:block;margin-bottom:8px}
 .table-input-wrap input{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(232,201,122,.2);color:#E8C97A;font-family:'Cormorant Garamond',serif;font-size:1.2rem;padding:10px;outline:none;text-align:center}
@@ -304,8 +302,8 @@ body{font-family:'Syne',sans-serif;background:#F7F2EA;color:#0D0A06;overflow-x:h
 }
 `;
 
-// ── STATIC DATA ───────────────────────────────────────────────
-const PRODUCTS = [
+// ── STATIC DATA (solo para Hero y featured en Home) ───────────
+const PRODUCTS_STATIC = [
   {id:1,name:"Espresso Clásico",cat:"Café",emoji:"☕",price:4500,tag:"hot",origin:"Huila, Colombia",desc:"Concentrado de café puro extraído a alta presión. Intenso, cremoso y con notas de chocolate amargo.",ingredients:[{e:"💧",n:"Agua filtrada"},{e:"🫘",n:"Grano arábica 100%"},{e:"🌡️",n:"90°C exactos"}],steps:["Precalienta la portafiltro y la taza 30 segundos.","Muele 18g de café a granulometría fina.","Extrae 25ml en 25-30 segundos a 9 bares.","Sirve inmediatamente para conservar la crema."],featured:true,video:"https://www.youtube.com/watch?v=ZgIVfpnpFpQ"},
   {id:2,name:"Cappuccino Artesanal",cat:"Café",emoji:"🫧",price:7800,tag:"hot",origin:"Nariño, Colombia",desc:"Equilibrio perfecto entre espresso, leche vaporizada y una espesa capa de espuma texturizada.",ingredients:[{e:"☕",n:"Double shot espresso"},{e:"🥛",n:"Leche entera 150ml"},{e:"🫧",n:"Espuma texturizada"},{e:"🍫",n:"Cacao opcional"}],steps:["Prepara un double shot de espresso.","Vaporiza la leche hasta 65°C.","Vierte con movimiento circular sobre el espresso.","Termina con 1cm de espuma densa."],featured:true,video:"https://www.youtube.com/watch?v=gvPSAa5esEA"},
   {id:3,name:"Cold Brew 24h",cat:"Frío",emoji:"🧊",price:9500,tag:"new",origin:"Tolima, Colombia",desc:"Extraído en frío durante 24 horas. Suave, dulce naturalmente, con baja acidez y notas de caramelo.",ingredients:[{e:"🫘",n:"Grano tostado medio"},{e:"💧",n:"Agua fría 4°C"},{e:"⏱️",n:"24 horas de infusión"},{e:"🧊",n:"Hielo artesanal"}],steps:["Muele 80g a granulometría gruesa.","Combina con 1L de agua fría hermético.","Refrigera 18-24 horas sin agitar.","Filtra con papel y sirve sobre hielo."],featured:false,video:"https://www.youtube.com/watch?v=8oCFxjrKGco"},
@@ -435,7 +433,7 @@ function HeroCard(){
 
 // ── HOME ──────────────────────────────────────────────────────
 function HomePage({setPage,onQuickAdd,orders}){
-  const featured=PRODUCTS.filter(p=>p.featured);
+  const featured=PRODUCTS_STATIC.filter(p=>p.featured);
   return(
     <div className="page">
       <div className="hero">
@@ -480,82 +478,174 @@ function HomePage({setPage,onQuickAdd,orders}){
 }
 
 // ── PRODUCT DRAWER ────────────────────────────────────────────
+// FIX: ahora acepta productos del backend (campos diferentes) y del array estático
 function ProductDrawer({product,onClose,onAdd}){
   const [qty,setQty]=useState(1);
   useEffect(()=>setQty(1),[product]);
   useEffect(()=>{document.body.style.overflow=product?"hidden":"";return()=>{document.body.style.overflow=""};},[product]);
+
+  if(!product) return(
+    <>
+      <div className="drawer-overlay" onClick={onClose}/>
+      <div className="drawer"/>
+    </>
+  );
+
+  // FIX: normalizar campos — el backend usa description/category, el estático usa desc/cat/origin/steps/video
+  const desc        = product.description || product.desc || "";
+  const origin      = product.origin      || product.category || "";
+  const ingredients = Array.isArray(product.ingredients) ? product.ingredients : [];
+  const steps       = Array.isArray(product.steps) ? product.steps : [];
+  const video       = product.video || "";
+
   return(
     <>
-      <div className={`drawer-overlay${product?" open":""}`} onClick={onClose}/>
-      <div className={`drawer${product?" open":""}`}>
-        {product&&<>
-          <div className="drawer-hero">
-            <button className="drawer-close" onClick={onClose}>✕</button>
-            <span className="drawer-emoji">{product.emoji}</span>
-            <div className="drawer-name">{product.name}</div>
-            <div className="drawer-origin">{product.origin}</div>
-            <div className="drawer-price">${product.price.toLocaleString()}</div>
-          </div>
-          <div className="drawer-body">
+      <div className="drawer-overlay open" onClick={onClose}/>
+      <div className="drawer open">
+        <div className="drawer-hero">
+          <button className="drawer-close" onClick={onClose}>✕</button>
+          <span className="drawer-emoji">{product.emoji}</span>
+          <div className="drawer-name">{product.name}</div>
+          {origin && <div className="drawer-origin">{origin}</div>}
+          <div className="drawer-price">${Number(product.price).toLocaleString()}</div>
+        </div>
+        <div className="drawer-body">
+          {desc && <>
             <div className="dsec">Sobre este café</div>
-            <p className="drawer-desc">{product.desc}</p>
+            <p className="drawer-desc">{desc}</p>
+          </>}
+
+          {/* FIX: ingredientes — soporta array de strings (backend) y de objetos {e,n} (estático) */}
+          {ingredients.length > 0 && <>
             <div className="dsec">Ingredientes</div>
-            <div className="ing-list">{product.ingredients.map((ing,i)=><div key={i} className="ing-pill"><span>{ing.e}</span>{ing.n}</div>)}</div>
-            <div className="dsec">Preparación</div>
-            <ol className="steps-ol">{product.steps.map((s,i)=><li key={i}>{s}</li>)}</ol>
-            <button className="video-btn" style={{opacity:product.video?1:.4}} onClick={()=>product.video&&window.open(product.video,"_blank")}>
-              <span className="play-icon">▶</span>
-              <span>{product.video?"Ver método de preparación":"Video próximamente"}</span>
-            </button>
-          </div>
-          <div className="drawer-footer">
-            <div className="qty-row">
-              <button className="qty-btn-d" onClick={()=>setQty(q=>Math.max(1,q-1))}>−</button>
-              <span className="qty-num">{qty}</span>
-              <button className="qty-btn-d" onClick={()=>setQty(q=>q+1)}>+</button>
+            <div className="ing-list">
+              {ingredients.map((ing,i) => (
+                <div key={i} className="ing-pill">
+                  {typeof ing === "string"
+                    ? <><span>🫘</span>{ing}</>
+                    : <><span>{ing.e}</span>{ing.n}</>
+                  }
+                </div>
+              ))}
             </div>
-            <button className="add-main-btn" onClick={()=>{onAdd(product,qty);onClose();}}>Agregar al pedido</button>
+          </>}
+
+          {/* FIX: preparación solo si existen pasos (no disponible en productos del backend) */}
+          {steps.length > 0 && <>
+            <div className="dsec">Preparación</div>
+            <ol className="steps-ol">{steps.map((s,i)=><li key={i}>{s}</li>)}</ol>
+          </>}
+
+          {video && (
+            <button className="video-btn" onClick={()=>window.open(video,"_blank")}>
+              <span className="play-icon">▶</span>
+              <span>Ver método de preparación</span>
+            </button>
+          )}
+
+          {/* Rating del producto si viene del backend */}
+          {product.avg_rating > 0 && (
+            <div style={{marginTop:"1.5rem",display:"flex",alignItems:"center",gap:8}}>
+              <Stars value={product.avg_rating} size={16}/>
+              <span style={{fontFamily:F.serif,fontSize:"1rem",color:C.textDark}}>{Number(product.avg_rating).toFixed(1)}</span>
+              <span style={{fontFamily:F.sans,fontSize:".68rem",color:C.textLight}}>({product.rating_count} calificaciones)</span>
+            </div>
+          )}
+        </div>
+        <div className="drawer-footer">
+          <div className="qty-row">
+            <button className="qty-btn-d" onClick={()=>setQty(q=>Math.max(1,q-1))}>−</button>
+            <span className="qty-num">{qty}</span>
+            <button className="qty-btn-d" onClick={()=>setQty(q=>q+1)}>+</button>
           </div>
-        </>}
+          <button className="add-main-btn" onClick={()=>{onAdd(product,qty);onClose();}}>Agregar al pedido</button>
+        </div>
       </div>
     </>
   );
 }
 
 // ── MENU PAGE ─────────────────────────────────────────────────
+// FIX: carga los productos desde el backend en lugar del array estático
 function MenuPage({onOpenProduct}){
   const [filter,setFilter]=useState("Todos");
-  const cats=["Todos",...new Set(PRODUCTS.map(p=>p.cat))];
-  const filtered=filter==="Todos"?PRODUCTS:PRODUCTS.filter(p=>p.cat===filter);
+  const [products,setProducts]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [error,setError]=useState("");
+
+  useEffect(()=>{
+    fetch(`${API}/menu`)
+      .then(r=>{
+        if(!r.ok) throw new Error(`Error ${r.status}`);
+        return r.json();
+      })
+      .then(data=>{
+        setProducts(data);
+        setLoading(false);
+      })
+      .catch(err=>{
+        console.error("Error cargando menú:", err);
+        // Fallback al array estático si el backend no responde
+        setProducts(PRODUCTS_STATIC);
+        setError("Backend no disponible — mostrando carta de ejemplo");
+        setLoading(false);
+      });
+  },[]);
+
+  // FIX: el backend devuelve 'category', el estático usa 'cat'
+  const getCategory = p => p.category || p.cat || "Otros";
+  const cats = ["Todos",...new Set(products.map(getCategory))];
+  const filtered = filter==="Todos" ? products : products.filter(p=>getCategory(p)===filter);
+
   return(
     <div className="page">
       <div className="section">
         <div className="sec-label">Nuestra carta</div>
         <h2 className="sec-title">Todo el menú</h2>
-        <div className="menu-layout">
-          <div className="menu-sidebar">
-            <p style={{fontFamily:F.sans,fontSize:".68rem",letterSpacing:"2px",textTransform:"uppercase",color:C.smoke,marginBottom:"1.5rem"}}>Filtrar por</p>
-            <div className="filter-list">
-              {cats.map(c=><button key={c} className={`filter-item${filter===c?" active":""}`} onClick={()=>setFilter(c)}>{c}<span className="filter-count">{c==="Todos"?PRODUCTS.length:PRODUCTS.filter(p=>p.cat===c).length}</span></button>)}
+        {error && (
+          <div style={{background:C.yellowBg,border:`1px solid ${C.yellowBorder}`,padding:"10px 14px",fontFamily:F.sans,fontSize:".78rem",color:C.sYellow,marginBottom:20}}>
+            ⚠️ {error}
+          </div>
+        )}
+        {loading ? <Spinner/> : (
+          <div className="menu-layout">
+            <div className="menu-sidebar">
+              <p style={{fontFamily:F.sans,fontSize:".68rem",letterSpacing:"2px",textTransform:"uppercase",color:C.smoke,marginBottom:"1.5rem"}}>Filtrar por</p>
+              <div className="filter-list">
+                {cats.map(c=>(
+                  <button key={c} className={`filter-item${filter===c?" active":""}`} onClick={()=>setFilter(c)}>
+                    {c}
+                    <span className="filter-count">
+                      {c==="Todos" ? products.length : products.filter(p=>getCategory(p)===c).length}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="menu-grid">
+              {filtered.length===0 && (
+                <div style={{gridColumn:"1/-1",padding:"3rem",textAlign:"center",color:C.smoke,fontFamily:F.sans,fontSize:".8rem"}}>
+                  Sin productos en esta categoría
+                </div>
+              )}
+              {filtered.map(p=>(
+                <div key={p.id} className="menu-card" onClick={()=>onOpenProduct(p)}>
+                  <div className="menu-card-top">
+                    <span className="menu-emoji">{p.emoji}</span>
+                    {p.tag && <span className={`menu-badge ${BADGE_CLS[p.tag]||"badge-new"}`}>{TAG_MAP[p.tag]||p.tag}</span>}
+                  </div>
+                  <div className="menu-name">{p.name}</div>
+                  {/* FIX: description (backend) o desc (estático) */}
+                  <div className="menu-desc">{p.description||p.desc}</div>
+                  <div className="menu-footer">
+                    <span className="menu-price">${Number(p.price).toLocaleString()}</span>
+                    <button className="menu-btn" onClick={e=>{e.stopPropagation();onOpenProduct(p);}}>Ver detalles</button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-          <div className="menu-grid">
-            {filtered.map(p=>(
-              <div key={p.id} className="menu-card" onClick={()=>onOpenProduct(p)}>
-                <div className="menu-card-top">
-                  <span className="menu-emoji">{p.emoji}</span>
-                  {p.tag&&<span className={`menu-badge ${BADGE_CLS[p.tag]}`}>{TAG_MAP[p.tag]}</span>}
-                </div>
-                <div className="menu-name">{p.name}</div>
-                <div className="menu-desc">{p.desc}</div>
-                <div className="menu-footer">
-                  <span className="menu-price">${p.price.toLocaleString()}</span>
-                  <button className="menu-btn" onClick={e=>{e.stopPropagation();onOpenProduct(p);}}>Ver detalles</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
@@ -710,7 +800,6 @@ function ExperiencePage({loyalty,onSimulateLoyalty,onSaveMessage,onToast}){
 }
 
 // ── ORDER PAGE ────────────────────────────────────────────────
-// FIX: agrega campo de número de mesa + llama al backend
 function OrderPage({cart,onRemove,onCheckout,checkingOut}){
   const [note,setNote]=useState("");
   const [tableNumber,setTableNumber]=useState("");
@@ -747,31 +836,16 @@ function OrderPage({cart,onRemove,onCheckout,checkingOut}){
           <div className="os-row"><span>Subtotal</span><span>${total.toLocaleString()}</span></div>
           <div className="os-row"><span>Productos</span><span>{cart.reduce((s,i)=>s+i.qty,0)}</span></div>
           <div className="os-total"><span>Total</span><span>${total.toLocaleString()}</span></div>
-
-          {/* FIX: campo de número de mesa obligatorio */}
           <div className="table-input-wrap">
             <label>Número de mesa</label>
-            <input
-              type="number"
-              min="1"
-              max="50"
-              value={tableNumber}
-              onChange={e=>setTableNumber(e.target.value)}
-              placeholder="Ej: 5"
-            />
+            <input type="number" min="1" max="50" value={tableNumber} onChange={e=>setTableNumber(e.target.value)} placeholder="Ej: 5"/>
           </div>
-
           <div className="barista-note">
             <label>Nota para el barista</label>
             <textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="Ej: sin azúcar, leche de almendras, para llevar…"/>
           </div>
-
-          <button
-            className="checkout-main"
-            onClick={()=>onCheckout(note, Number(tableNumber))}
-            disabled={checkingOut || !tableValid}
-          >
-            {checkingOut ? "Enviando…" : !tableValid ? "Ingresa el número de mesa" : "Confirmar pedido"}
+          <button className="checkout-main" onClick={()=>onCheckout(note,Number(tableNumber))} disabled={checkingOut||!tableValid}>
+            {checkingOut?"Enviando…":!tableValid?"Ingresa el número de mesa":"Confirmar pedido"}
           </button>
         </div>
       </div>
@@ -827,7 +901,6 @@ function LoginPage({onLogin}){
 }
 
 // ── KITCHEN VIEW ──────────────────────────────────────────────
-// FIX: normaliza campos del backend (menu_item_name/quantity) y del frontend (name/qty)
 function KitchenView({orders,onUpdateStatus}){
   const STATUS={
     pending:  {bg:"#fffbf0",border:C.dorado,  label:"Pendiente", icon:"⏳"},
@@ -836,11 +909,9 @@ function KitchenView({orders,onUpdateStatus}){
     delivered:{bg:C.bg,     border:C.borderLight,label:"Entregado",icon:"📦"},
   };
   const active=orders.filter(o=>o.status!=="delivered"&&o.status!=="cancelled");
-
-  // FIX: función helper para normalizar un item sea del backend o del frontend
-  function getItemName(item){ return item.menu_item_name || item.name || "Producto"; }
-  function getItemQty(item) { return item.quantity || item.qty || 1; }
-  function getItemNote(item){ return item.special_note || item.note || ""; }
+  const getItemName=item=>item.menu_item_name||item.name||"Producto";
+  const getItemQty =item=>item.quantity||item.qty||1;
+  const getItemNote=item=>item.special_note||item.note||"";
 
   return(
     <div>
@@ -857,16 +928,14 @@ function KitchenView({orders,onUpdateStatus}){
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
                 <div>
                   <span style={{fontFamily:F.serif,fontWeight:700,fontSize:"1.3rem",color:C.textDark}}>Mesa #{order.table_number||"—"}</span>
-                  <span style={{fontFamily:F.sans,fontSize:".68rem",color:C.textLight,marginLeft:8}}>{order.created_at||order.time||""}</span>
+                  <span style={{fontFamily:F.sans,fontSize:".68rem",color:C.textLight,marginLeft:8}}>{order.created_at||""}</span>
                 </div>
                 <span style={{fontFamily:F.sans,fontSize:".68rem",fontWeight:600,color:C.textMid,background:"rgba(255,255,255,.7)",padding:"3px 10px"}}>{s.icon} {s.label}</span>
               </div>
               <div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:14,paddingBottom:14,borderBottom:`1px solid ${s.border}60`}}>
                 {(order.items||[]).map((item,i)=>(
                   <div key={i} style={{display:"flex",justifyContent:"space-between"}}>
-                    <span style={{fontFamily:F.sans,fontSize:".82rem",color:C.textDark,fontWeight:500}}>
-                      {getItemQty(item)}× {getItemName(item)}
-                    </span>
+                    <span style={{fontFamily:F.sans,fontSize:".82rem",color:C.textDark,fontWeight:500}}>{getItemQty(item)}× {getItemName(item)}</span>
                     {getItemNote(item)&&<span style={{fontFamily:F.sans,fontSize:".68rem",color:C.textLight,fontStyle:"italic"}}>"{getItemNote(item)}"</span>}
                   </div>
                 ))}
@@ -894,11 +963,6 @@ function KitchenView({orders,onUpdateStatus}){
       )}
     </div>
   );
-
-  // Helper necesario dentro del scope para los entregados
-  function getItemName(item){ return item.menu_item_name || item.name || "Producto"; }
-  function getItemQty(item) { return item.quantity || item.qty || 1; }
-  function getItemNote(item){ return item.special_note || item.note || ""; }
 }
 
 // ── SUPPLY PANEL ──────────────────────────────────────────────
@@ -1346,7 +1410,6 @@ function AppContent(){
     toastTimer.current=setTimeout(()=>setToast(t=>({...t,visible:false})),3200);
   }
 
-  // FIX: WebSocket con reconexión automática
   useEffect(()=>{
     let ws;let reconnectTimer;
     function connect(){
@@ -1355,38 +1418,27 @@ function AppContent(){
         ws.onmessage=e=>{
           try{
             const{type,data}=JSON.parse(e.data);
-            if(type==="NEW_ORDER"){
-              setOrders(prev=>{
-                if(prev.find(o=>o.id===data.id))return prev;
-                return [data,...prev];
-              });
-            }
-            if(type==="ORDER_STATUS"){
-              setOrders(prev=>prev.map(o=>o.id===data.id?{...o,status:data.status}:o));
+            if(type==="NEW_ORDER"){setOrders(prev=>{if(prev.find(o=>o.id===data.id))return prev;return[data,...prev];});}
+            if(type==="ORDER_STATUS"){setOrders(prev=>prev.map(o=>o.id===data.id?{...o,status:data.status}:o));}
+            // FIX: recargar menú en la carta cuando el admin hace cambios
+            if(type==="MENU_UPDATED"){
+              // Disparar evento para que MenuPage recargue si está montado
+              window.dispatchEvent(new CustomEvent("menu_updated"));
             }
           }catch(err){}
         };
-        ws.onclose=()=>{
-          // Reconectar en 5 segundos si se pierde la conexión
-          reconnectTimer=setTimeout(connect,5000);
-        };
+        ws.onclose=()=>{reconnectTimer=setTimeout(connect,5000);};
         ws.onerror=()=>{};
       }catch(e){}
     }
     connect();
-    return()=>{
-      if(reconnectTimer)clearTimeout(reconnectTimer);
-      try{ws?.close();}catch(e){}
-    };
+    return()=>{if(reconnectTimer)clearTimeout(reconnectTimer);try{ws?.close();}catch(e){}};
   },[]);
 
-  // Cargar pedidos del backend cuando cambia la vista o el token
   useEffect(()=>{
     if(!((appView==="admin"||appView==="kitchen")&&token))return;
     request("GET","/orders").then(setOrders).catch(()=>{});
-    const interval=setInterval(()=>{
-      request("GET","/orders").then(setOrders).catch(()=>{});
-    },15000);
+    const interval=setInterval(()=>{request("GET","/orders").then(setOrders).catch(()=>{});},15000);
     return()=>clearInterval(interval);
   },[appView,token]);
 
@@ -1397,62 +1449,27 @@ function AppContent(){
   }
   function removeFromCart(id){setCart(c=>c.filter(i=>i.id!==id));}
 
-  // FIX: checkout llama al backend y recibe el número de mesa como parámetro
-  async function checkout(note, tableNumber){
+  async function checkout(note,tableNumber){
     if(checkingOut)return;
     setCheckingOut(true);
     const total=cart.reduce((s,i)=>s+i.price*i.qty,0);
-
-    // FIX: formato de items correcto para el backend
-    const payload={
-      table_number: tableNumber,
-      note: note||"",
-      items: cart.map(i=>({
-        id: i.id,
-        name: i.name,
-        qty: i.qty,
-        price: i.price,
-        note: note||"",
-      })),
-    };
-
+    const payload={table_number:tableNumber,note:note||"",items:cart.map(i=>({id:i.id,name:i.name,qty:i.qty,price:i.price,note:note||""}))};
     try{
-      // Intentar enviar al backend
-      const res=await fetch(`${API}/orders`,{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify(payload),
-      });
-      if(!res.ok){
-        const err=await res.json();
-        throw new Error(err.error||JSON.stringify(err.errors));
-      }
+      const res=await fetch(`${API}/orders`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+      if(!res.ok){const err=await res.json();throw new Error(err.error||JSON.stringify(err.errors));}
       const order=await res.json();
-      // FIX: agregar el pedido del backend al estado de pedidos (llegará también por WS)
-      setOrders(prev=>{
-        if(prev.find(o=>o.id===order.id))return prev;
-        return [order,...prev];
-      });
+      setOrders(prev=>{if(prev.find(o=>o.id===order.id))return prev;return[order,...prev];});
       showToast("🎉  Pedido enviado a cocina");
     }catch(e){
-      // Fallback a localStorage si el backend no está disponible
-      const order={
-        id:Date.now(),items:[...cart],total,note,
-        table_number:tableNumber,status:"pending",
-        created_at:new Date().toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit"}),
-      };
+      const order={id:Date.now(),items:[...cart],total,note,table_number:tableNumber,status:"pending",created_at:new Date().toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit"})};
       const newOrders=[order,...localOrders];
-      setLocalOrders(newOrders);
-      saveLS("ara2_orders",newOrders);
-      showToast(`⚠️  Sin conexión al backend. Pedido guardado localmente.`,true);
+      setLocalOrders(newOrders);saveLS("ara2_orders",newOrders);
+      showToast("⚠️  Sin conexión al backend. Pedido guardado localmente.",true);
     }
-
-    // Siempre actualizar fidelidad y vaciar carrito
     const newL={points:loyalty.points+Math.floor(total/100),stamps:Math.min(10,loyalty.stamps+cart.reduce((s,i)=>s+i.qty,0))};
     if(newL.stamps>=10){showToast("🎁  10 sellos — ¡Bebida gratis en tu próxima visita!");newL.stamps=0;}
     setLoyalty(newL);saveLS("ara2_loyalty",newL);
-    setCart([]);
-    setCheckingOut(false);
+    setCart([]);setCheckingOut(false);
   }
 
   function simulateLoyalty(){
@@ -1469,25 +1486,21 @@ function AppContent(){
     setLocalOrders(prev=>prev.map(o=>o.id===orderId?{...o,status:newStatus}:o));
     if(token)request("PATCH",`/orders/${orderId}/status`,{status:newStatus}).catch(()=>{});
   }
-
-  // FIX: handleLogin redirige correctamente según el rol
   function handleLogin(t,r,u){
     login(t,r,u);
-    if(["superadmin","admin","cashier"].includes(r)){
-      setAppView("admin");
-    }else if(r==="kitchen"){
-      setAppView("kitchen");
-    }else{
-      setAppView("customer");
-    }
+    if(["superadmin","admin","cashier"].includes(r))setAppView("admin");
+    else if(r==="kitchen")setAppView("kitchen");
+    else setAppView("customer");
   }
-
   function changePage(p){setPage(p);window.scrollTo(0,0);}
   function changeView(v){setAppView(v);if(v==="customer")setPage("home");window.scrollTo(0,0);}
 
   const cartCount=cart.reduce((s,i)=>s+i.qty,0);
   const allOrders=orders.length?orders:localOrders;
-  const pendingCount=allOrders.filter(o=>o.status==="pending").length;
+  // FIX: pendingCount solo se muestra cuando el usuario está autenticado
+  const pendingCount=(appView==="admin"||appView==="kitchen")
+    ? allOrders.filter(o=>o.status==="pending").length
+    : 0;
 
   return(
     <>
